@@ -57,8 +57,8 @@ int main(int argc, char *argv[])
                 {
                     int user_id = 0, last_read_id = 0;
                     scanf("%d%d", &user_id, &last_read_id);
-                    std::cout << "Input userid: [" << user_id << "], last_read_id: [" << last_read_id << "]\n";
-                    LoginHandler::SendLogin(p_epollclnt->GetClntPtr(), user_id, last_read_id);
+                    int ret = LoginHandler::SendLogin(p_epollclnt->GetClntPtr(), user_id, last_read_id);
+                    std::cout << "Input userid: [" << user_id << "], last_read_id: [" << last_read_id << "] ret [" << ret << "]\n";
                 }
                 else
                 {

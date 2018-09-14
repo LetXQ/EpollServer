@@ -80,8 +80,12 @@ void EpollServer::AddCmd(int32_t type, CmdBase* p_cmd)
 int32_t EpollServer::ClntLogin(TcpClient *p_clnt, int32_t user_id,  int32_t last_read_id)
 {
     if (!p_clnt)
+    {
+        printf("EpollServer Login uid[%d] lastreadid[%d] failed", user_id, last_read_id);
         return ERR_NULLPTR;
+    }
 
+    printf("EpollServer Login uid[%d] lastreadid[%d]", user_id, last_read_id);
     auto iter = m_p_client_map.find(user_id);
     if (iter != m_p_client_map.end())
     {
@@ -219,12 +223,14 @@ void EpollServer::ExecRead(TcpClient* p_clnt)
         return;
     }
 
+    std::cout << "ExecRead packet size: " << p_clnt->m_read_packets.size() << std::endl;
     if (!p_clnt->m_read_packets.empty())
     {
         int ret = 0;
         for (auto& elem : p_clnt->m_read_packets)
         {
             ret = this->ExecCmd(p_clnt, elem);
+            std::cout << "ExecRead ret: " << ret << std::endl;
             if (ret != 0)
                 break;
         }
@@ -251,6 +257,7 @@ int32_t EpollServer::ExecCmd(TcpClient *p_clnt, Packet &packet)
     }
     else
     {
+         std::cout << "----------------2----------type[" << packet.type << "]\n";
         return ERR_CMD_NOT_FOUND;
     }
 }

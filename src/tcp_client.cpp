@@ -3,6 +3,7 @@
 #include <sys/epoll.h>
  #include <sys/socket.h>
  #include <unistd.h>
+#include <stdio.h>
 
 #include "../include/tcp_client.h"
 #include "../include/common_notice.h"
@@ -24,8 +25,11 @@ TcpClient::TcpClient(int32_t uid, int32_t sockfd, int32_t epollfd, EpollServer *
 
 int32_t TcpClient::SendPacket(Packet &packet)
 {
-    if(m_b_broken || ComFuncs::GetNowSec() - m_i_broken_time > BROKEN_WAIT_TIME)
+    if(m_b_broken && ComFuncs::GetNowSec() - m_i_broken_time > BROKEN_WAIT_TIME)
+    {
+        printf("SendPacket broken[%s] time[%d]", (m_b_broken ? "True" : "False"), ComFuncs::GetNowSec() - m_i_broken_time);
         return ERR_CLNT_IS_BROKEN;
+    }
 
     if (CMD_TYPE_TICK != packet.type)
     {
@@ -57,10 +61,11 @@ int32_t TcpClient::ReadPacket(Packet &packet)
 
 void TcpClient::AddWriteToEpoll()
 {
+    std::cout << "AddWriteToEpoll\n";
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLOUT | EPOLLERR;
     ev.data.ptr = this;
-    epoll_ctl(m_i_epollfd, EPOLL_CTL_ADD, m_i_sockfd, &ev);
+    epoll_ctl(m_i_epollfd, EPOLL_CTL_MOD, m_i_sockfd, &ev);
 }
 
 void TcpClient::DelWriteFromEpoll()
@@ -123,7 +128,7 @@ int32_t TcpClient::DoRead(int32_t& total_size)
     int32_t _total_size = 0;
     int32_t b_read = false;
     int32_t read_size = 0;
-
+    std::cout << "Start Read\n";
     do{
         read_size = recv(m_i_sockfd, m_read_buff + m_read_buff_pos, MAX_BUFF_SIZE - m_read_buff_pos, 0);
 
@@ -138,6 +143,7 @@ int32_t TcpClient::DoRead(int32_t& total_size)
         _total_size += read_size;
         m_read_buff_pos += read_size;
         int32_t num = this->ParsePacket();
+        std::cout << "Read num : [" << num << std::endl;
     }while(read_size != 0);
 
     if (!b_read)

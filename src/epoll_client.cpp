@@ -201,6 +201,7 @@ int32_t EpollClient::DoCmd(Packet &packet)
     }
     else
     {
+        std::cout << "----------------1----------\n";
         return ERR_CMD_NOT_FOUND;
     }
 }
