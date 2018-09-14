@@ -8,6 +8,7 @@
 #include "../include/common_notice.h"
 #include "../include/tcp_client.h"
 #include "../include/cmd_def.h"
+#include "../include/common_func.h"
 
 EpollServer::EpollServer()
 {
@@ -71,7 +72,7 @@ void EpollServer::Run()
     }
 }
 
-void EpollServer::AddCmd(int32_t type, CmdBasePtr p_cmd)
+void EpollServer::AddCmd(int32_t type, CmdBase* p_cmd)
 {
     m_p_cmd_map[type] = p_cmd;
 }
@@ -93,7 +94,7 @@ int32_t EpollServer::ClntLogin(TcpClient *p_clnt, int32_t user_id,  int32_t last
     }
 }
 
-void EpollServer::Forward(TcpClient *p_clnt,  int32_t user_id,  const std::__cxx11::string &data)
+void EpollServer::Forward(TcpClient *p_clnt,  int32_t user_id,  const std::string &data)
 {
     if (!p_clnt)
         return;
@@ -220,7 +221,7 @@ void EpollServer::ExecRead(TcpClient* p_clnt)
     if (!p_clnt->m_read_packets.empty())
     {
         int ret = 0;
-        for (auto& elem : m_read_packets)
+        for (auto& elem : p_clnt->m_read_packets)
         {
             ret = this->ExecCmd(p_clnt, elem);
             if (ret != 0)
@@ -240,7 +241,7 @@ void EpollServer::ExecWrite(TcpClient* p_clnt)
 int32_t EpollServer::ExecCmd(TcpClient *p_clnt, Packet &packet)
 {
     if (!p_clnt)
-        return;
+        return ERR_NULLPTR;
 
     auto iter = m_p_cmd_map.find(packet.type);
     if (iter != m_p_cmd_map.end())
@@ -263,7 +264,7 @@ int32_t EpollServer::Reconnect(TcpClient *p_old, TcpClient *p_new, int32_t last_
     this->DelClntFromEpoll(p_old);
     p_old->Reconnect(p_new->GetClntSock());
     SAVE_DELETE(p_new);
-    int32_t now_time = GetNowSec();
+    int32_t now_time = ComFuncs::GetNowSec();
     if (now_time - p_old->GetBrokenTime() > BROKEN_WAIT_TIME)
     {
         p_old->ClearWritePackets();

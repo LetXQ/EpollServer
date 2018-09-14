@@ -12,7 +12,7 @@ public:
 
     int32_t InitServer(int32_t port = 8888, const char* ip = nullptr);
     void Run();
-    void AddCmd(int32_t type, CmdBasePtr p_cmd);
+    void AddCmd(int32_t type, CmdBase* p_cmd);
     int32_t ClntLogin(TcpClient* p_clnt, int32_t user_id,  int32_t last_read_id);
     void Forward(TcpClient*p_clnt,  int32_t user_id,  const std::string& data);
 private:

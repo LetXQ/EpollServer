@@ -1,13 +1,17 @@
 #include <fcntl.h>
 #include <cassert>
 #include <sys/epoll.h>
+ #include <sys/socket.h>
+ #include <unistd.h>
 
 #include "../include/tcp_client.h"
 #include "../include/common_notice.h"
+#include "../include/common_func.h"
 #include "../include/cmd_def.h"
 #include "../include/bytebuffer.h"
+#include "../include/epoll_server.h"
 
-TcpClient::TcpClient(int32_t uid, int32_t sockfd, int32_t epollfd, void *server)
+TcpClient::TcpClient(int32_t uid, int32_t sockfd, int32_t epollfd, EpollServer *server)
     : m_i_uid(uid)
     , m_i_sockfd(sockfd)
     , m_i_epollfd(epollfd)
@@ -20,7 +24,7 @@ TcpClient::TcpClient(int32_t uid, int32_t sockfd, int32_t epollfd, void *server)
 
 int32_t TcpClient::SendPacket(Packet &packet)
 {
-    if(m_b_broken || GetNowSec() - m_i_broken_time > BROKEN_WAIT_TIME)
+    if(m_b_broken || ComFuncs::GetNowSec() - m_i_broken_time > BROKEN_WAIT_TIME)
         return ERR_CLNT_IS_BROKEN;
 
     if (CMD_TYPE_TICK != packet.type)
@@ -96,7 +100,7 @@ int32_t TcpClient::DoWrite()
             if (write_size == want_size)
             {
                 m_i_write_packet_pos = 0;
-                (*m_write_iter).send_time = GetNowSec();
+                (*m_write_iter).send_time = ComFuncs::GetNowSec();
                 m_old_packets.push_back(*m_write_iter);
                 ++m_write_iter;
                 m_write_packets.pop_front();
@@ -148,8 +152,8 @@ int32_t TcpClient::DoRead(int32_t& total_size)
 void TcpClient::DoClose()
 {
     m_b_broken = true;
-    m_i_broken_time = GetNowSec();
-    close(m_sockfd);
+    m_i_broken_time = ComFuncs::GetNowSec();
+    close(m_i_sockfd);
     m_i_sockfd = 0;
 }
 
@@ -167,7 +171,7 @@ void TcpClient::ResetSendPos(int32_t last_read_id)
 
     auto iter = m_old_packets.begin();
     auto last_iter = m_old_packets.end();
-    int32_t now = GetNowSec();
+    int32_t now = ComFuncs::GetNowSec();
 
     do{
         --last_iter;
@@ -211,6 +215,11 @@ int32_t TcpClient::GetBrokenTime() const
 int32_t TcpClient::GetUserID() const
 {
     return m_i_uid;
+}
+
+EpollServer *TcpClient::GetServerPtr()
+{
+    return m_p_server;
 }
 
 int32_t TcpClient::SetNonBlock()
