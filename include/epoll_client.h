@@ -9,7 +9,7 @@ public:
     ~EpollClient();
     int32_t Run();
     void AddCmd(uint8_t type, CmdBase* p_cmd);
-    const TcpClient* GetClntPtr() const;
+    TcpClient* GetClntPtr();
 private:
     int32_t ConnectToServer();
     int32_t SendDataToServer();

@@ -184,8 +184,9 @@ void EpollServer::ExecNewClient()
         TcpClient* p_clnt = new TcpClient(0, clnt_fd, m_i_epollfd, this);
         if (p_clnt)
         {
+            std::cout << "AcceptNewClient fd: [" << clnt_fd << "]\n";
             struct epoll_event ev;
-            ev.events = EPOLLIN | EPOLLOUT |EPOLLERR;
+            ev.events = EPOLLIN | EPOLLOUT |EPOLLET;
             ev.data.ptr = p_clnt;
             epoll_ctl(m_i_epollfd, EPOLL_CTL_ADD, clnt_fd, &ev);
         }

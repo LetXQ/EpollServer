@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <cassert>
+#include <stdio.h>
 
 #include "../include/epoll_client.h"
 #include "../include/tcp_client.h"
@@ -31,7 +32,11 @@ int32_t EpollClient::Run()
 {
     int32_t ret = this->ConnectToServer();
     if (ret != 0)
+    {
+        std::cout << "EpollClient: Run Failed ret [" << ret << "]\n";
         return ret;
+    }
+
     struct epoll_event ev;
     ev.data.fd = m_sockfd;
     ev.events = EPOLLOUT | EPOLLERR | EPOLLHUP;
@@ -45,43 +50,44 @@ int32_t EpollClient::Run()
         int32_t nfds = epoll_wait(m_i_epollfd, evs, MAX_SOCKFD_NUM, 100);
         for (int32_t i = 0; i < nfds; ++i)
         {
-           if (evs[i].events & EPOLLOUT)
-           {
-               ret = this->SendDataToServer();
-               if (ret > 0)
-               {
-                   struct epoll_event i_ev;
-                   i_ev.events = EPOLLIN | EPOLLERR | EPOLLHUP;
-                   i_ev.data.fd = evs[i].data.fd;
-                   epoll_ctl(m_i_epollfd, EPOLL_CTL_MOD, i_ev.data.fd, &i_ev);
-               }
-               else
-               {
+            if (evs[i].events & EPOLLOUT)
+            {
+                ret = this->SendDataToServer();
+                if (ret == 0)
+                {
+                    struct epoll_event i_ev;
+                    i_ev.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+                    i_ev.data.fd = evs[i].data.fd;
+                    epoll_ctl(m_i_epollfd, EPOLL_CTL_MOD, i_ev.data.fd, &i_ev);
+                }
+                else
+                {
+                    printf("EpollClient Disconnect-----1---ret[%d]\n", ret) ;
                     this->DelEpoll();
-                   this->Disconnect();
-               }
-           }
-           else if(evs[i].events & EPOLLIN)
-           {
-               int32_t len = this->ReadDataFromServer();
-               if (len <= 0)
-               {
-                   this->DelEpoll();
-                   this->Disconnect();
-               }
-               else
-               {
-                   struct epoll_event i_ev;
-                   i_ev.events = EPOLLOUT | EPOLLERR | EPOLLHUP;
-                   i_ev.data.fd = evs[i].data.fd;
-                   epoll_ctl(m_i_epollfd, EPOLL_CTL_MOD, i_ev.data.fd, &i_ev);
-               }
-           }
-           else
-           {
-               this->DelEpoll();
-               this->Disconnect();
-           }
+                    this->Disconnect();
+                }
+            }
+            else if(evs[i].events & EPOLLIN)
+            {
+                int32_t len = this->ReadDataFromServer();
+                if (len <= 0)
+                {
+                    this->DelEpoll();
+                    this->Disconnect();
+                }
+                else
+                {
+                    struct epoll_event i_ev;
+                    i_ev.events = EPOLLOUT | EPOLLERR | EPOLLHUP;
+                    i_ev.data.fd = evs[i].data.fd;
+                    epoll_ctl(m_i_epollfd, EPOLL_CTL_MOD, i_ev.data.fd, &i_ev);
+                }
+            }
+            else
+            {
+                this->DelEpoll();
+                this->Disconnect();
+            }
         }
     }
 }
@@ -91,13 +97,15 @@ void EpollClient::AddCmd(uint8_t type, CmdBase *p_cmd)
     m_cmd_map[type] = p_cmd;
 }
 
-const TcpClient *EpollClient::GetClntPtr() const
+TcpClient *EpollClient::GetClntPtr()
 {
+    printf("GetClntPtr m_p_clnt:  [%p] this[%p]\n", m_p_clnt, this) ;
     return m_p_clnt;
 }
 
 int32_t EpollClient::ConnectToServer()
 {
+    printf("ConnectToServer start m_p_clnt:  [%p] this[%p]\n", m_p_clnt, this) ;
     if (m_p_clnt)
     {
         this->Disconnect();
@@ -121,6 +129,7 @@ int32_t EpollClient::ConnectToServer()
     if (-1 == ret)
         return ERR_CONNECT_FAILED;
     m_p_clnt = new TcpClient(m_user_id, m_sockfd, m_i_epollfd, nullptr);
+    printf("ConnectToServer end m_p_clnt:  [%p] this[%p]\n", m_p_clnt, this) ;
     return 0;
 }
 
@@ -130,7 +139,7 @@ int32_t EpollClient::SendDataToServer()
     {
         return m_p_clnt->DoWrite();
     }
-    return 0;
+    return ERR_NULLPTR;
 }
 
 int32_t EpollClient::ReadDataFromServer()
@@ -173,6 +182,7 @@ void EpollClient::Disconnect()
 {
     if (m_p_clnt)
     {
+        printf("Disconnect m_p_clnt:  [%p] this[%p]\n", m_p_clnt, this) ;
         m_p_clnt->DoClose();
         m_p_clnt->Clear();
         SAVE_DELETE(m_p_clnt);
